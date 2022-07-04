@@ -9,51 +9,76 @@ import Button from "@mui/material/Button";
 // Custom styles
 import "./style.scss";
 import { useNavigate } from "react-router-dom";
+import useAfterFistRendered from "../../hooks/useSecondRender";
 
 const USERNAME = "username";
 const PASSWORD = "password";
 
-function validateUser(text: string) {
-  if(!text || text.length > 50) return false;
-  return true;
+/**
+ * 
+ * @param text 
+ * @returns Invalid -> false; Valid -> true
+ */
+function isValidUserFc(text: string) {
+  if (!text || text.length > 50) return true;
+  return false;
 }
 
-function validatePassword(text: string) {
-  if(!text || text.length > 50) return false;
-  return true;
+/**
+ * 
+ * @param text 
+ * @returns Invalid -> false; Valid -> true
+ */
+function isValidPasswordFc(text: string) {
+  if (!text || text.length > 50) return true;
+  return false;
 }
 
 export default function LoginView() {
-  const [isSubmit, setIsSubmit] = useState(false);
-  const [isUserError, setIsUserError] = useState(false);
-  const [isPasswordError, setIsPasswordError] = useState(false);
+  const [isloadingButton, setIsloadingButton] = useState(true);
+  const [isUserError, setIsUserError] = useState(true);
+  const [isPasswordError, setIsPasswordError] = useState(true);
+  const afterFirstRender = useAfterFistRendered();
   const refForm = useRef<HTMLFormElement>(null);
   const navigate = useNavigate();
 
   const handleSubmit = (e: React.MouseEvent) => {
     e.preventDefault();
-    setIsSubmit(true);
+    setIsloadingButton(true);
+
+    const formData = new FormData(refForm.current as HTMLFormElement);
+    const username = formData.get(USERNAME);
+    const password = formData.get(PASSWORD);
+    const credential = { username, password };
+
     setTimeout(() => {
+      setIsloadingButton(false);
+      console.log("credential: ", credential);
       navigate("/home");
-    },2000);
+    }, 2000);
   };
 
   const handleBlur = (e: React.FocusEvent) => {
-    if(!refForm.current) return;
-
-    const formData = new FormData(refForm.current);
+    const formData = new FormData(refForm.current as HTMLFormElement);
 
     const username = formData.get(USERNAME) || "";
+    const password = formData.get(PASSWORD) || "";
+    let isValidUser = false;
+    let isValidPassword = false;
+
     if (e.target.id === USERNAME) {
-      validateUser(username.toString()) ? setIsUserError(false) : setIsUserError(true);
-      return;
+      isValidUser = isValidUserFc(username.toString());
+      setIsUserError(isValidUser);
+    }
+    if (e.target.id === PASSWORD) {
+      isValidPassword = isValidPasswordFc(password.toString());
+      setIsPasswordError(isValidPassword);
     }
 
-    const password = formData.get(PASSWORD) || "";
-    if (e.target.id === PASSWORD) {
-      validatePassword(password.toString()) ? setIsPasswordError(false) : setIsPasswordError(true);
-      return;
+    if (afterFirstRender && isValidPassword && isPasswordError) {
+      setIsloadingButton(false);
     }
+
   };
 
 
@@ -75,7 +100,7 @@ export default function LoginView() {
               onBlur={handleBlur}
             />
             <TextField
-              error={isPasswordError}
+              error={afterFirstRender && isPasswordError}
               fullWidth
               id={PASSWORD}
               name={PASSWORD}
@@ -85,9 +110,10 @@ export default function LoginView() {
             />
           </CardContent>
           <CardActions className="form--actions">
-            <Button disabled={isSubmit} onClick={handleSubmit} variant="contained">Entrar</Button>
+            <Button disabled={(isPasswordError || isUserError)} onClick={handleSubmit} variant="contained">{isloadingButton ? "Loading" : "Entrar"}</Button>
           </CardActions>
         </form>
+        {isPasswordError?"pass":""}-{isUserError?"use":""}
       </Card>
     </section>
   );
